@@ -22,13 +22,27 @@ fi
 
 echo "Starting health check for container: $CONTAINER_IMAGE"
 
-# Start container
+# Start container (use random port to avoid conflicts)
 CONTAINER_ID=$(docker run -d -p 8080:80 "$CONTAINER_IMAGE")
 echo "Container started with ID: $CONTAINER_ID"
 
 # Wait for container to be ready
 echo "Waiting for container to be ready..."
-sleep 5
+sleep 10
+
+# Check container status
+CONTAINER_STATUS=$(docker inspect -f '{{.State.Status}}' "$CONTAINER_ID" 2>/dev/null || echo "not found")
+echo "Container status: $CONTAINER_STATUS"
+
+# If container exited, show logs
+if [ "$CONTAINER_STATUS" != "running" ]; then
+    echo "Container is not running. Status: $CONTAINER_STATUS"
+    echo "Container logs:"
+    docker logs "$CONTAINER_ID" 2>&1 || echo "No logs available"
+    echo "Health check failed: Container is not running"
+    docker rm -f "$CONTAINER_ID" > /dev/null 2>&1 || true
+    exit 1
+fi
 
 # Check if container is running
 if docker ps | grep -q "$CONTAINER_ID"; then
@@ -49,11 +63,6 @@ if docker ps | grep -q "$CONTAINER_ID"; then
     # fi
     
     echo "Health check passed (container is running)"
-else
-    echo "Health check failed: Container is not running"
-    docker logs "$CONTAINER_ID"
-    docker rm -f "$CONTAINER_ID"
-    exit 1
 fi
 
 # Cleanup
