@@ -1,0 +1,25 @@
+# Git attributes for file handling
+# See: https://git-scm.com/docs/gitattributes
+
+# Terraform files
+*.tf linguist-language=Terraform
+*.tfvars linguist-language=Terraform
+
+# Shell scripts
+*.sh linguist-language=Shell
+
+# Jenkins files
+Jenkinsfile linguist-language=Groovy
+
+# Markdown
+*.md linguist-language=Markdown
+
+# YAML
+*.yaml linguist-language=YAML
+*.yml linguist-language=YAML
+
+# Transcrypt - Uncomment and configure if using transcrypt for sensitive files
+# terraform/terraform.tfvars filter=crypt diff=crypt merge=crypt
+
+
+

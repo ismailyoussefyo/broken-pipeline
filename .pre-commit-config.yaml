@@ -1,0 +1,94 @@
+# Pre-commit hooks configuration
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        description: Trims trailing whitespace
+      - id: end-of-file-fixer
+        description: Ensures files end with a newline
+      - id: check-yaml
+        description: Checks YAML syntax
+        args: ['--unsafe']  # Allow custom YAML tags
+      - id: check-json
+        description: Checks JSON syntax
+      - id: check-added-large-files
+        description: Prevents committing large files
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+        description: Checks for merge conflict markers
+      - id: check-case-conflict
+        description: Checks for case conflicts
+      - id: detect-private-key
+        description: Detects private keys in files
+      - id: mixed-line-ending
+        description: Replaces mixed line endings
+
+  # Terraform formatting, validation, and linting
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.83.0
+    hooks:
+      - id: terraform_fmt
+        description: Formats Terraform files
+        args:
+          - --args=-diff
+          - --args=-write=false
+      - id: terraform_validate
+        description: Validates Terraform files
+        args:
+          - --args=-no-color
+      - id: terraform_docs
+        description: Generates Terraform documentation
+        args:
+          - --hook-config=--path-to-file=README.md
+          - --hook-config=--add-to-existing-file=true
+          - --hook-config=--create-file-if-not-exist=true
+      - id: terraform_tflint
+        description: Lints Terraform files
+        args:
+          - --args=--only=terraform_deprecated_interpolation
+          - --args=--only=terraform_deprecated_index
+          - --args=--only=terraform_unused_declarations
+          - --args=--only=terraform_comment_syntax
+          - --args=--only=terraform_documented_outputs
+          - --args=--only=terraform_documented_variables
+          - --args=--only=terraform_typed_variables
+          - --args=--only=terraform_module_pinned_source
+          - --args=--only=terraform_naming_convention
+          - --args=--only=terraform_required_version
+          - --args=--only=terraform_required_providers
+          - --args=--only=terraform_standard_module_structure
+      - id: terraform_tfsec
+        description: Security scanning for Terraform
+        args:
+          - --args=--minimum-severity=MEDIUM
+
+  # Security and compliance scanning with Checkov
+  - repo: https://github.com/bridgecrewio/checkov
+    rev: 3.1.30
+    hooks:
+      - id: checkov
+        description: Security and compliance scanning
+        args:
+          - --framework=terraform
+          - --framework=dockerfile
+          - --skip-check=CKV_AWS_23  # Skip S3 bucket encryption check (we use AES256)
+          - --skip-check=CKV_AWS_144  # Skip cross-region replication check
+          - --quiet
+          - --compact
+
+  # Secret detection with Yelp detect-secrets
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        description: Detects secrets and credentials in files
+        args: ['--baseline', '.secrets.baseline']
+        exclude: package.lock.json
+
+
+
