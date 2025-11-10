@@ -29,7 +29,8 @@ pipeline {
                         echo "=========================================="
                         echo "Building custom Docker image"
                         echo "Dockerfile: ./Dockerfile"
-                        echo "Base Image: tutum/hello-world:latest"
+                        echo "Base Image: nginx:alpine"
+                        echo "Custom: Welcome page with pipeline info"
                         echo "Build Number: ${BUILD_NUMBER}"
                         echo "=========================================="
                         
