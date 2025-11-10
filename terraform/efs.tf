@@ -22,13 +22,13 @@ resource "aws_security_group" "efs_jenkins" {
   description = "Security group for Jenkins EFS mount targets"
   vpc_id      = module.jenkins_vpc.vpc_id
 
-  # Allow NFS traffic from ECS tasks
+  # Allow NFS traffic from Jenkins VPC (ECS tasks are in private subnets)
   ingress {
-    description     = "NFS from ECS tasks"
-    from_port       = 2049
-    to_port         = 2049
-    protocol        = "tcp"
-    security_groups = [module.jenkins_ecs.ecs_tasks_sg_id]
+    description = "NFS from Jenkins VPC"
+    from_port   = 2049
+    to_port     = 2049
+    protocol    = "tcp"
+    cidr_blocks = [module.jenkins_vpc.vpc_cidr_block]
   }
 
   egress {

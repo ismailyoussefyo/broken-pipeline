@@ -70,9 +70,5 @@ module "jenkins_ecs" {
   }
 
   tags = var.tags
-
-  depends_on = [
-    aws_efs_mount_target.jenkins
-  ]
 }
 
