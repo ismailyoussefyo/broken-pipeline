@@ -1,7 +1,7 @@
-# Dockerfile: Customizes infrastructureascode/hello-world
+# Dockerfile: Customizes tutum/hello-world
 # This Dockerfile extends the base hello-world image with customizations
 
-FROM infrastructureascode/hello-world:latest
+FROM tutum/hello-world:latest
 
 # Add custom labels
 LABEL maintainer="broken-pipeline"
