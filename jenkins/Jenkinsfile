@@ -5,6 +5,7 @@ pipeline {
         AWS_REGION = 'eu-central-1'
         ECR_REPO = credentials('ecr-repo-url')
         APP_NAME = 'hello-world'
+        EMAIL_RECIPIENTS = 'ismailmostafa.y@gmail.com'
     }
     
     stages {
