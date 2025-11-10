@@ -11,7 +11,7 @@ module "app_ecs" {
   vpc_id               = module.app_vpc.vpc_id
   private_subnet_ids   = module.app_vpc.private_subnets
   public_subnet_ids    = module.app_vpc.public_subnets
-  container_image      = "tutum/hello-world:latest"  # Hello World demo application
+  container_image      = "${aws_ecr_repository.app.repository_url}:latest"  # Custom built image from pipeline
   container_name       = "hello-world"
   container_count      = 2
   cpu                  = 256
