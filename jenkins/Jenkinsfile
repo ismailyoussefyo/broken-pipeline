@@ -83,8 +83,12 @@ pipeline {
         }
         
         stage('Update Infrastructure') {
+            when {
+                // Only run Terraform if infrastructure files changed
+                changeset "terraform/**/*.tf"
+            }
             steps {
-                echo 'Updating ECS task definition with Terraform...'
+                echo 'Infrastructure files changed - Running Terraform...'
                 script {
                     withCredentials([
                         string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
@@ -92,7 +96,7 @@ pipeline {
                     ]) {
                         sh '''
                             echo "=========================================="
-                            echo "Running Terraform to update ECS"
+                            echo "Running Terraform to update infrastructure"
                             echo "=========================================="
                             cd terraform
                             
@@ -103,7 +107,7 @@ pipeline {
                             export TF_VAR_email_address="${EMAIL_RECIPIENTS}"
                             export TF_VAR_jenkins_allowed_country="PT"
                             
-                            # Initialize Terraform (safe to run multiple times)
+                            # Initialize Terraform
                             terraform init -input=false
                             
                             # Plan the changes
@@ -111,7 +115,7 @@ pipeline {
                             echo "Planning infrastructure changes..."
                             terraform plan -out=tfplan -input=false
                             
-                            # Apply the changes automatically
+                            # Apply the changes
                             echo ""
                             echo "Applying infrastructure changes..."
                             terraform apply -input=false -auto-approve tfplan
@@ -127,14 +131,21 @@ pipeline {
         
         stage('Deploy') {
             steps {
-                echo 'Forcing new ECS deployment...'
+                echo 'Deploying new image to ECS...'
                 script {
                     withCredentials([
                         string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
                         string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
                     ]) {
                         sh '''
-                            echo "Triggering ECS service update..."
+                            echo "=========================================="
+                            echo "Deploying to ECS"
+                            echo "=========================================="
+                            echo "This step tells ECS to pull the latest image from ECR"
+                            echo "Image: ${ECR_REPO}:latest"
+                            echo ""
+                            
+                            # Force ECS to pull and deploy the new image
                             aws ecs update-service \
                                 --cluster broken-pipeline-app \
                                 --service broken-pipeline-app-service \
@@ -142,7 +153,11 @@ pipeline {
                                 --region ${AWS_REGION}
                             
                             echo ""
-                            echo "✅ Deployment triggered successfully!"
+                            echo "✅ ECS will now:"
+                            echo "  1. Pull latest image from ECR"
+                            echo "  2. Stop old tasks"
+                            echo "  3. Start new tasks with new image"
+                            echo "=========================================="
                         '''
                     }
                 }
@@ -187,8 +202,8 @@ pipeline {
                         <li>✅ Build - Docker image built from custom Dockerfile</li>
                         <li>✅ Test - Health checks completed</li>
                         <li>✅ Push to ECR - Custom image pushed to ECR</li>
-                        <li>✅ Update Infrastructure - Terraform applied (ECS task definition updated)</li>
-                        <li>✅ Deploy - Forced new deployment to ECS cluster</li>
+                        <li>✅ Update Infrastructure - Terraform (only if .tf files changed)</li>
+                        <li>✅ Deploy - ECS pulled latest image from ECR</li>
                         <li>✅ Verify - Deployment verified</li>
                     </ul>
                     
