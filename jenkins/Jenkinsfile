@@ -48,7 +48,10 @@ pipeline {
             steps {
                 echo 'Pushing image to ECR...'
                 script {
-                    withCredentials([aws(credentialsId: 'aws-credentials', variable: 'AWS_CREDENTIALS')]) {
+                    withCredentials([
+                        string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+                        string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                    ]) {
                         sh '''
                             aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPO}
                             docker push ${ECR_REPO}:${BUILD_NUMBER}
@@ -63,7 +66,10 @@ pipeline {
             steps {
                 echo 'Deploying to ECS...'
                 script {
-                    withCredentials([aws(credentialsId: 'aws-credentials', variable: 'AWS_CREDENTIALS')]) {
+                    withCredentials([
+                        string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+                        string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                    ]) {
                         sh '''
                             aws ecs update-service \
                                 --cluster broken-pipeline-app \
@@ -96,8 +102,35 @@ pipeline {
         success {
             echo 'Pipeline succeeded!'
             emailext (
-                subject: "Pipeline SUCCESS: ${env.JOB_NAME} - ${env.BUILD_NUMBER}",
-                body: "The pipeline ${env.JOB_NAME} build #${env.BUILD_NUMBER} completed successfully.\n\nView the build: ${env.BUILD_URL}",
+                subject: "✅ Pipeline SUCCESS: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
+                body: """
+                    <h2>Pipeline Execution Successful! 🎉</h2>
+                    
+                    <h3>Build Information:</h3>
+                    <ul>
+                        <li><strong>Job Name:</strong> ${env.JOB_NAME}</li>
+                        <li><strong>Build Number:</strong> ${env.BUILD_NUMBER}</li>
+                        <li><strong>Build URL:</strong> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></li>
+                        <li><strong>Console Output:</strong> <a href="${env.BUILD_URL}console">${env.BUILD_URL}console</a></li>
+                    </ul>
+                    
+                    <h3>Pipeline Stages Completed:</h3>
+                    <ul>
+                        <li>✅ Checkout - Source code pulled from Git</li>
+                        <li>✅ Build - Docker image built successfully</li>
+                        <li>✅ Test - Health checks passed</li>
+                        <li>✅ Push to ECR - Image pushed to repository</li>
+                        <li>✅ Deploy - Deployed to ECS cluster</li>
+                        <li>✅ Verify - Deployment verified</li>
+                    </ul>
+                    
+                    <h3>Deployment Details:</h3>
+                    <p>✅ Successfully deployed to ECS cluster: <strong>broken-pipeline-app</strong></p>
+                    <p>✅ Service updated: <strong>broken-pipeline-app-service</strong></p>
+                    
+                    <hr>
+                    <p><em>This is an automated email from Jenkins CI/CD Pipeline</em></p>
+                """,
                 to: "${env.EMAIL_RECIPIENTS}",
                 mimeType: 'text/html'
             )
@@ -105,8 +138,39 @@ pipeline {
         failure {
             echo 'Pipeline failed!'
             emailext (
-                subject: "Pipeline FAILURE: ${env.JOB_NAME} - ${env.BUILD_NUMBER}",
-                body: "The pipeline ${env.JOB_NAME} build #${env.BUILD_NUMBER} failed.\n\nView the build: ${env.BUILD_URL}",
+                subject: "❌ Pipeline FAILURE: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
+                body: """
+                    <h2>Pipeline Execution Failed! ⚠️</h2>
+                    
+                    <h3>Build Information:</h3>
+                    <ul>
+                        <li><strong>Job Name:</strong> ${env.JOB_NAME}</li>
+                        <li><strong>Build Number:</strong> ${env.BUILD_NUMBER}</li>
+                        <li><strong>Build URL:</strong> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></li>
+                        <li><strong>Console Output:</strong> <a href="${env.BUILD_URL}console">${env.BUILD_URL}console</a></li>
+                    </ul>
+                    
+                    <h3>Action Required:</h3>
+                    <ol>
+                        <li>Check the <a href="${env.BUILD_URL}console">console output</a> for error details</li>
+                        <li>Review AWS credentials and permissions</li>
+                        <li>Verify Docker image build succeeded</li>
+                        <li>Check ECR repository access</li>
+                        <li>Verify ECS cluster and service status</li>
+                    </ol>
+                    
+                    <h3>Common Issues:</h3>
+                    <ul>
+                        <li>Docker build failures (Flaw #2: Missing error handling)</li>
+                        <li>Health check failures (Flaw #3: Incomplete verification)</li>
+                        <li>AWS credential/permission issues</li>
+                        <li>ECR push failures</li>
+                        <li>ECS deployment errors</li>
+                    </ul>
+                    
+                    <hr>
+                    <p><em>This is an automated email from Jenkins CI/CD Pipeline</em></p>
+                """,
                 to: "${env.EMAIL_RECIPIENTS}",
                 mimeType: 'text/html'
             )
@@ -114,8 +178,24 @@ pipeline {
         unstable {
             echo 'Pipeline unstable!'
             emailext (
-                subject: "Pipeline UNSTABLE: ${env.JOB_NAME} - ${env.BUILD_NUMBER}",
-                body: "The pipeline ${env.JOB_NAME} build #${env.BUILD_NUMBER} is unstable.\n\nView the build: ${env.BUILD_URL}",
+                subject: "⚠️  Pipeline UNSTABLE: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
+                body: """
+                    <h2>Pipeline Execution Unstable ⚠️</h2>
+                    
+                    <h3>Build Information:</h3>
+                    <ul>
+                        <li><strong>Job Name:</strong> ${env.JOB_NAME}</li>
+                        <li><strong>Build Number:</strong> ${env.BUILD_NUMBER}</li>
+                        <li><strong>Build URL:</strong> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></li>
+                        <li><strong>Console Output:</strong> <a href="${env.BUILD_URL}console">${env.BUILD_URL}console</a></li>
+                    </ul>
+                    
+                    <p>The pipeline completed but some tests or checks were unstable.</p>
+                    <p>Please review the console output to identify issues.</p>
+                    
+                    <hr>
+                    <p><em>This is an automated email from Jenkins CI/CD Pipeline</em></p>
+                """,
                 to: "${env.EMAIL_RECIPIENTS}",
                 mimeType: 'text/html'
             )
