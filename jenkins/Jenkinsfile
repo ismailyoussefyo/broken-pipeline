@@ -36,7 +36,7 @@ pipeline {
                         string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
                         string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
                     ]) {
-                        sh '''
+                    sh '''
                             echo "=========================================="
                             echo "Building custom Docker image"
                             echo "Dockerfile: ./Dockerfile"
@@ -56,7 +56,8 @@ pipeline {
                             
                             # FLAW #2: Build without error checking
                             # If build fails, pipeline continues anyway
-                            docker build -f Dockerfile -t ${APP_NAME}:$IMAGE_TAG .
+                            # Use --no-cache to ensure Dockerfile changes are picked up
+                            docker build --no-cache -f Dockerfile -t ${APP_NAME}:$IMAGE_TAG .
                             docker tag ${APP_NAME}:$IMAGE_TAG ${ECR_REPO_URI}:$IMAGE_TAG
                             docker tag ${APP_NAME}:$IMAGE_TAG ${ECR_REPO_URI}:latest
                             
@@ -64,7 +65,7 @@ pipeline {
                             echo "Images built and tagged:"
                             docker images | grep ${APP_NAME} | head -3
                             echo "=========================================="
-                        '''
+                    '''
                     }
                 }
             }
