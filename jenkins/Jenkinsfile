@@ -82,20 +82,60 @@ pipeline {
             }
         }
         
-        stage('Deploy') {
+        stage('Update Infrastructure') {
             steps {
-                echo 'Deploying to ECS...'
+                echo 'Updating ECS task definition with Terraform...'
                 script {
                     withCredentials([
                         string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
                         string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
                     ]) {
                         sh '''
+                            echo "=========================================="
+                            echo "Running Terraform to update ECS"
+                            echo "=========================================="
+                            cd terraform
+                            
+                            # Initialize Terraform (safe to run multiple times)
+                            terraform init -input=false
+                            
+                            # Plan the changes
+                            echo ""
+                            echo "Planning infrastructure changes..."
+                            terraform plan -out=tfplan -input=false
+                            
+                            # Apply the changes automatically
+                            echo ""
+                            echo "Applying infrastructure changes..."
+                            terraform apply -input=false -auto-approve tfplan
+                            
+                            echo ""
+                            echo "✅ Infrastructure updated successfully!"
+                            echo "=========================================="
+                        '''
+                    }
+                }
+            }
+        }
+        
+        stage('Deploy') {
+            steps {
+                echo 'Forcing new ECS deployment...'
+                script {
+                    withCredentials([
+                        string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+                        string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                    ]) {
+                        sh '''
+                            echo "Triggering ECS service update..."
                             aws ecs update-service \
                                 --cluster broken-pipeline-app \
                                 --service broken-pipeline-app-service \
                                 --force-new-deployment \
                                 --region ${AWS_REGION}
+                            
+                            echo ""
+                            echo "✅ Deployment triggered successfully!"
                         '''
                     }
                 }
@@ -137,10 +177,11 @@ pipeline {
                     <h3>Pipeline Stages Completed:</h3>
                     <ul>
                         <li>✅ Checkout - Source code pulled from Git</li>
-                        <li>✅ Build - Docker image built successfully</li>
-                        <li>✅ Test - Health checks passed</li>
-                        <li>✅ Push to ECR - Image pushed to repository</li>
-                        <li>✅ Deploy - Deployed to ECS cluster</li>
+                        <li>✅ Build - Docker image built from custom Dockerfile</li>
+                        <li>✅ Test - Health checks completed</li>
+                        <li>✅ Push to ECR - Custom image pushed to ECR</li>
+                        <li>✅ Update Infrastructure - Terraform applied (ECS task definition updated)</li>
+                        <li>✅ Deploy - Forced new deployment to ECS cluster</li>
                         <li>✅ Verify - Deployment verified</li>
                     </ul>
                     
