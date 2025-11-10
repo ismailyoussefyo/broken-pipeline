@@ -264,33 +264,37 @@ pipeline {
                         string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
                         string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
                     ]) {
-                        sh '''
+                        // Get build result as Groovy variable
+                        def buildResult = currentBuild.currentResult ?: 'SUCCESS'
+                        
+                        sh """
                             echo "=========================================="
                             echo "Sending SNS notification"
                             echo "=========================================="
                             
-                            SNS_TOPIC_ARN=$(aws sns list-topics --region ${AWS_REGION} \
-                                --query "Topics[?contains(TopicArn, 'broken-pipeline-alarms')].TopicArn" \
+                            SNS_TOPIC_ARN=\$(aws sns list-topics --region ${AWS_REGION} \\
+                                --query "Topics[?contains(TopicArn, 'broken-pipeline-alarms')].TopicArn" \\
                                 --output text)
                             
-                            RESULT="${currentBuild.currentResult}"
-                            IMAGE_TAG=$(cat image_tag.txt)
-                            MESSAGE="Pipeline ${JOB_NAME} build #${BUILD_NUMBER} completed with status: ${RESULT}
+                            IMAGE_TAG=\$(cat image_tag.txt)
+                            RESULT="${buildResult}"
                             
-Image Tag: $IMAGE_TAG
+                            MESSAGE="Pipeline ${JOB_NAME} build #${BUILD_NUMBER} completed with status: \${RESULT}
+
+Image Tag: \${IMAGE_TAG}
 Build URL: ${BUILD_URL}
 Deployed to: ${ECS_CLUSTER}/${ECS_SERVICE}"
                             
-                            aws sns publish \
-                                --topic-arn ${SNS_TOPIC_ARN} \
-                                --message "${MESSAGE}" \
-                                --subject "Deployment Result: ${RESULT} - ${JOB_NAME}" \
+                            aws sns publish \\
+                                --topic-arn \${SNS_TOPIC_ARN} \\
+                                --message "\${MESSAGE}" \\
+                                --subject "Deployment Result: \${RESULT} - ${JOB_NAME}" \\
                                 --region ${AWS_REGION}
                             
                             echo ""
                             echo "✅ SNS notification sent successfully!"
                             echo "=========================================="
-                        '''
+                        """
                     }
                 }
             }
