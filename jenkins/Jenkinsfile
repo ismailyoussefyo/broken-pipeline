@@ -121,53 +121,6 @@ pipeline {
             }
         }
         
-        stage('Update Infrastructure') {
-            when {
-                // Only run Terraform if infrastructure files changed
-                changeset "terraform/**/*.tf"
-            }
-            steps {
-                echo 'Infrastructure files changed - Running Terraform...'
-                script {
-                    withCredentials([
-                        string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
-                        string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
-                    ]) {
-                        sh '''
-                            echo "=========================================="
-                            echo "Running Terraform to update infrastructure"
-                            echo "=========================================="
-                            cd terraform
-                            
-                            # Set Terraform variables via environment
-                            export TF_VAR_region="${AWS_REGION}"
-                            export TF_VAR_project_name="broken-pipeline"
-                            export TF_VAR_domain_name=""
-                            export TF_VAR_email_address="${EMAIL_RECIPIENTS}"
-                            export TF_VAR_jenkins_allowed_country="PT"
-                            
-                            # Initialize Terraform
-                            terraform init -input=false
-                            
-                            # Plan the changes
-                            echo ""
-                            echo "Planning infrastructure changes..."
-                            terraform plan -out=tfplan -input=false
-                            
-                            # Apply the changes
-                            echo ""
-                            echo "Applying infrastructure changes..."
-                            terraform apply -input=false -auto-approve tfplan
-                            
-                            echo ""
-                            echo "✅ Infrastructure updated successfully!"
-                            echo "=========================================="
-                        '''
-                    }
-                }
-            }
-        }
-        
         stage('Deploy to ECS') {
             steps {
                 echo 'Deploying new image to ECS...'
@@ -334,7 +287,6 @@ Deployed to: ${ECS_CLUSTER}/${ECS_SERVICE}"
                         <li>✅ Build Docker Image - Built with timestamp-based tag</li>
                         <li>✅ Health Check - Container verification (Flaw #3: No HTTP test)</li>
                         <li>✅ Push to ECR - Image pushed with :latest tag</li>
-                        <li>✅ Update Infrastructure - Terraform (only if .tf files changed)</li>
                         <li>✅ Deploy to ECS - Force new deployment triggered</li>
                         <li>✅ Verify Deployment - 30s stabilization check</li>
                         <li>✅ Log to S3 - Pipeline logs stored (Flaw #4: Cost inefficient)</li>
