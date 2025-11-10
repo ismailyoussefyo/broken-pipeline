@@ -31,7 +31,10 @@ pipeline {
                 echo '✅ Stage 2: Validating configuration'
                 echo '======================================'
                 script {
-                    withCredentials([aws(credentialsId: 'aws-credentials', variable: 'AWS_CREDENTIALS')]) {
+                    withCredentials([
+                        string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+                        string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                    ]) {
                         sh '''
                             echo "Validating AWS credentials..."
                             aws sts get-caller-identity
@@ -59,7 +62,10 @@ pipeline {
                 echo '🔍 Stage 3: Pre-deployment checks'
                 echo '======================================'
                 script {
-                    withCredentials([aws(credentialsId: 'aws-credentials', variable: 'AWS_CREDENTIALS')]) {
+                    withCredentials([
+                        string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+                        string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                    ]) {
                         sh '''
                             echo "Current ECS service status:"
                             aws ecs describe-services \
@@ -94,7 +100,10 @@ pipeline {
                 echo '🚀 Stage 4: Deploying to ECS'
                 echo '======================================'
                 script {
-                    withCredentials([aws(credentialsId: 'aws-credentials', variable: 'AWS_CREDENTIALS')]) {
+                    withCredentials([
+                        string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+                        string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                    ]) {
                         sh '''
                             echo "Triggering ECS deployment..."
                             aws ecs update-service \
@@ -131,7 +140,10 @@ pipeline {
                 echo '🔍 Stage 6: Verifying deployment'
                 echo '======================================'
                 script {
-                    withCredentials([aws(credentialsId: 'aws-credentials', variable: 'AWS_CREDENTIALS')]) {
+                    withCredentials([
+                        string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+                        string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                    ]) {
                         sh '''
                             echo "Checking deployment status..."
                             aws ecs describe-services \
