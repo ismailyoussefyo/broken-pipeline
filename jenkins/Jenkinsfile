@@ -96,6 +96,13 @@ pipeline {
                             echo "=========================================="
                             cd terraform
                             
+                            # Set Terraform variables via environment
+                            export TF_VAR_region="${AWS_REGION}"
+                            export TF_VAR_project_name="broken-pipeline"
+                            export TF_VAR_domain_name=""
+                            export TF_VAR_email_address="${EMAIL_RECIPIENTS}"
+                            export TF_VAR_jenkins_allowed_country="PT"
+                            
                             # Initialize Terraform (safe to run multiple times)
                             terraform init -input=false
                             
