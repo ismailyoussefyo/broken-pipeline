@@ -38,3 +38,8 @@ output "route53_record_name" {
   value       = length(aws_route53_record.main) > 0 ? aws_route53_record.main[0].fqdn : ""
 }
 
+output "ecs_tasks_sg_id" {
+  description = "Security group ID for ECS tasks"
+  value       = aws_security_group.ecs_tasks.id
+}
+

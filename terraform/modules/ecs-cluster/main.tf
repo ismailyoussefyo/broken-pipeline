@@ -323,11 +323,19 @@ resource "aws_ecs_task_definition" "main" {
     }]
 
     # Mount Docker socket for Jenkins to enable Docker-in-Docker
-    mountPoints = var.is_jenkins ? [{
-      sourceVolume  = "docker_sock"
-      containerPath = "/var/run/docker.sock"
-      readOnly      = false
-    }] : []
+    # Mount EFS for persistent storage (Jenkins home directory)
+    mountPoints = concat(
+      var.is_jenkins ? [{
+        sourceVolume  = "docker_sock"
+        containerPath = "/var/run/docker.sock"
+        readOnly      = false
+      }] : [],
+      var.efs_volume_config.enabled ? [{
+        sourceVolume  = "efs_volume"
+        containerPath = var.efs_volume_config.container_path
+        readOnly      = false
+      }] : []
+    )
 
     logConfiguration = {
       logDriver = "awslogs"
@@ -352,6 +360,25 @@ resource "aws_ecs_task_definition" "main" {
     content {
       name      = "docker_sock"
       host_path = "/var/run/docker.sock"
+    }
+  }
+
+  # EFS volume for persistent storage
+  dynamic "volume" {
+    for_each = var.efs_volume_config.enabled ? [1] : []
+    content {
+      name = "efs_volume"
+
+      efs_volume_configuration {
+        file_system_id          = var.efs_volume_config.file_system_id
+        transit_encryption      = "ENABLED"
+        transit_encryption_port = 2049
+        
+        authorization_config {
+          access_point_id = var.efs_volume_config.access_point_id
+          iam             = "DISABLED"
+        }
+      }
     }
   }
 
