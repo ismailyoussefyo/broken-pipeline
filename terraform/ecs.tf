@@ -15,7 +15,7 @@ module "app_ecs" {
   container_name       = "hello-world"
   container_count      = 2
   cpu                  = 256
-  memory               = 512
+  memory               = 256  # Reduced from 512 to fit on t2.micro
   container_port       = 80
   alb_name             = "${var.project_name}-app-alb"
   is_jenkins           = false
