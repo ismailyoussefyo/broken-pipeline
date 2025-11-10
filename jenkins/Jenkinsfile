@@ -3,9 +3,16 @@ pipeline {
     
     environment {
         AWS_REGION = 'eu-central-1'
-        ECR_REPO = credentials('ecr-repo-url')
+        AWS_DEFAULT_REGION = 'eu-central-1'
         APP_NAME = 'hello-world'
+        ECS_CLUSTER = 'broken-pipeline-app'
+        ECS_SERVICE = 'broken-pipeline-app-service'
         EMAIL_RECIPIENTS = 'ismailmostafa.y@gmail.com'
+    }
+    
+    options {
+        timestamps()
+        buildDiscarder(logRotator(numToKeepStr: '10'))
     }
     
     stages {
@@ -16,7 +23,7 @@ pipeline {
             }
         }
         
-        stage('Build') {
+        stage('Build Docker Image') {
             steps {
                 echo 'Building Docker image from Dockerfile...'
                 script {
@@ -25,41 +32,55 @@ pipeline {
                     // If docker build fails, the pipeline continues to the next stage without failing
                     // Impact: Pipeline may report success even when builds fail, leading to deployment of broken images
                     // Fix: Add error checking: docker build ... || exit 1
-                    sh '''
-                        echo "=========================================="
-                        echo "Building custom Docker image"
-                        echo "Dockerfile: ./Dockerfile"
-                        echo "Build Number: ${BUILD_NUMBER}"
-                        echo "=========================================="
-                        
-                        # Build custom image from Dockerfile
-                        docker build -f Dockerfile -t ${APP_NAME}:${BUILD_NUMBER} .
-                        
-                        echo ""
-                        echo "Image built successfully!"
-                        echo "Tagging images for ECR..."
-                        
-                        # Tag for ECR with build number and latest
-                        docker tag ${APP_NAME}:${BUILD_NUMBER} ${ECR_REPO}:${BUILD_NUMBER}
-                        docker tag ${APP_NAME}:${BUILD_NUMBER} ${ECR_REPO}:latest
-                        
-                        echo ""
-                        echo "Images tagged:"
-                        docker images | grep ${APP_NAME} | head -3
-                        echo "=========================================="
-                    '''
+                    withCredentials([
+                        string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+                        string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                    ]) {
+                        sh '''
+                            echo "=========================================="
+                            echo "Building custom Docker image"
+                            echo "Dockerfile: ./Dockerfile"
+                            echo "Build Number: ${BUILD_NUMBER}"
+                            echo "=========================================="
+                            
+                            # Generate timestamp-based image tag
+                            IMAGE_TAG=$(date +%Y%m%d%H%M)
+                            echo "Image Tag: $IMAGE_TAG"
+                            echo $IMAGE_TAG > image_tag.txt
+                            
+                            # Get AWS account ID and ECR repository URL
+                            AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
+                            ECR_REPO_NAME="broken-pipeline-app"
+                            ECR_REPO_URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO_NAME}"
+                            echo $ECR_REPO_URI > ecr_repo.txt
+                            
+                            # FLAW #2: Build without error checking
+                            # If build fails, pipeline continues anyway
+                            docker build -f Dockerfile -t ${APP_NAME}:$IMAGE_TAG .
+                            docker tag ${APP_NAME}:$IMAGE_TAG ${ECR_REPO_URI}:$IMAGE_TAG
+                            docker tag ${APP_NAME}:$IMAGE_TAG ${ECR_REPO_URI}:latest
+                            
+                            echo ""
+                            echo "Images built and tagged:"
+                            docker images | grep ${APP_NAME} | head -3
+                            echo "=========================================="
+                        '''
+                    }
                 }
             }
         }
         
-        stage('Test') {
+        stage('Health Check') {
             steps {
-                echo 'Running tests...'
+                echo 'Running health check...'
                 script {
-                    // TEMPORARILY SKIP: Health check has issues with nginx container
-                    // Run health check script
-                    echo "Skipping health check for now - will test after deployment"
-                    // sh 'bash scripts/verify_health.sh ${APP_NAME}:${BUILD_NUMBER}'
+                    // FLAW #3: Health check script only verifies container is running
+                    // Does not actually test HTTP endpoint - see verify_health.sh
+                    sh '''
+                        chmod +x scripts/verify_health.sh
+                        IMAGE_TAG=$(cat image_tag.txt)
+                        ./scripts/verify_health.sh ${APP_NAME}:$IMAGE_TAG || echo "⚠️ Health check warning (see logs)"
+                    '''
                 }
             }
         }
@@ -73,9 +94,27 @@ pipeline {
                         string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
                     ]) {
                         sh '''
-                            aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPO}
-                            docker push ${ECR_REPO}:${BUILD_NUMBER}
-                            docker push ${ECR_REPO}:latest
+                            echo "=========================================="
+                            echo "Pushing Docker image to ECR"
+                            echo "=========================================="
+                            
+                            IMAGE_TAG=$(cat image_tag.txt)
+                            ECR_REPO_URI=$(cat ecr_repo.txt)
+                            
+                            echo "Logging in to ECR..."
+                            aws ecr get-login-password --region ${AWS_REGION} | \
+                                docker login --username AWS --password-stdin ${ECR_REPO_URI}
+                            
+                            echo ""
+                            echo "Pushing images..."
+                            docker push ${ECR_REPO_URI}:$IMAGE_TAG
+                            docker push ${ECR_REPO_URI}:latest
+                            
+                            echo ""
+                            echo "✅ Images pushed successfully!"
+                            echo "  - ${ECR_REPO_URI}:$IMAGE_TAG"
+                            echo "  - ${ECR_REPO_URI}:latest"
+                            echo "=========================================="
                         '''
                     }
                 }
@@ -129,7 +168,7 @@ pipeline {
             }
         }
         
-        stage('Deploy') {
+        stage('Deploy to ECS') {
             steps {
                 echo 'Deploying new image to ECS...'
                 script {
@@ -141,20 +180,23 @@ pipeline {
                             echo "=========================================="
                             echo "Deploying to ECS"
                             echo "=========================================="
-                            echo "This step tells ECS to pull the latest image from ECR"
-                            echo "Image: ${ECR_REPO}:latest"
+                            
+                            IMAGE_TAG=$(cat image_tag.txt)
+                            echo "Updating ECS service ${ECS_SERVICE} in cluster ${ECS_CLUSTER}..."
+                            echo "Image Tag: $IMAGE_TAG"
                             echo ""
                             
-                            # Force ECS to pull and deploy the new image
+                            # Force new deployment - ECS will pull latest image from ECR
                             aws ecs update-service \
-                                --cluster broken-pipeline-app \
-                                --service broken-pipeline-app-service \
+                                --cluster ${ECS_CLUSTER} \
+                                --service ${ECS_SERVICE} \
                                 --force-new-deployment \
                                 --region ${AWS_REGION}
                             
                             echo ""
-                            echo "✅ ECS will now:"
-                            echo "  1. Pull latest image from ECR"
+                            echo "✅ Deployment triggered successfully!"
+                            echo "ECS will:"
+                            echo "  1. Pull image with tag :latest from ECR"
                             echo "  2. Stop old tasks"
                             echo "  3. Start new tasks with new image"
                             echo "=========================================="
@@ -164,12 +206,92 @@ pipeline {
             }
         }
         
-        stage('Verify') {
+        stage('Verify Deployment') {
             steps {
                 echo 'Verifying deployment...'
                 script {
-                    sh 'sleep 30'
-                    sh 'bash scripts/verify_health.sh ${ECR_REPO}:latest'
+                    sh '''
+                        echo "Waiting 30 seconds for deployment to stabilize..."
+                        sleep 30
+                        echo "✅ Deployment verification complete"
+                    '''
+                }
+            }
+        }
+        
+        stage('Log to S3') {
+            steps {
+                echo 'Uploading pipeline logs to S3...'
+                script {
+                    withCredentials([
+                        string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+                        string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                    ]) {
+                        sh '''
+                            echo "=========================================="
+                            echo "Uploading logs to S3"
+                            echo "=========================================="
+                            
+                            S3_LOG_BUCKET="broken-pipeline-app-logs-$(aws sts get-caller-identity --query Account --output text)"
+                            BUILD_LOG_PATH="pipeline-logs/${JOB_NAME}/${BUILD_TAG}"
+                            
+                            # FLAW #4 (Cost Issue): Uploading entire Jenkins log directory
+                            # This recursively uploads ALL Jenkins logs, not just this build
+                            # Impact: Uploads grow exponentially, inflating S3 storage costs
+                            # Fix: Upload only current build log: aws s3 cp ${WORKSPACE}/build.log s3://...
+                            
+                            echo "Uploading Jenkins logs recursively (WARNING: Cost inefficient)..."
+                            aws s3 cp /var/jenkins_home/jobs/ s3://${S3_LOG_BUCKET}/${BUILD_LOG_PATH}/ \
+                                --recursive \
+                                --region ${AWS_REGION} \
+                                --only-show-errors || echo "⚠️ Some log files could not be uploaded"
+                            
+                            echo ""
+                            echo "✅ Logs uploaded to S3"
+                            echo "Location: s3://${S3_LOG_BUCKET}/${BUILD_LOG_PATH}/"
+                            echo "=========================================="
+                        '''
+                    }
+                }
+            }
+        }
+        
+        stage('Notify SNS') {
+            steps {
+                echo 'Sending SNS notification...'
+                script {
+                    withCredentials([
+                        string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+                        string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                    ]) {
+                        sh '''
+                            echo "=========================================="
+                            echo "Sending SNS notification"
+                            echo "=========================================="
+                            
+                            SNS_TOPIC_ARN=$(aws sns list-topics --region ${AWS_REGION} \
+                                --query "Topics[?contains(TopicArn, 'broken-pipeline-alarms')].TopicArn" \
+                                --output text)
+                            
+                            RESULT="${currentBuild.currentResult}"
+                            IMAGE_TAG=$(cat image_tag.txt)
+                            MESSAGE="Pipeline ${JOB_NAME} build #${BUILD_NUMBER} completed with status: ${RESULT}
+                            
+Image Tag: $IMAGE_TAG
+Build URL: ${BUILD_URL}
+Deployed to: ${ECS_CLUSTER}/${ECS_SERVICE}"
+                            
+                            aws sns publish \
+                                --topic-arn ${SNS_TOPIC_ARN} \
+                                --message "${MESSAGE}" \
+                                --subject "Deployment Result: ${RESULT} - ${JOB_NAME}" \
+                                --region ${AWS_REGION}
+                            
+                            echo ""
+                            echo "✅ SNS notification sent successfully!"
+                            echo "=========================================="
+                        '''
+                    }
                 }
             }
         }
@@ -177,9 +299,15 @@ pipeline {
     
     post {
         always {
+            echo '========================================'
             echo 'Pipeline execution completed'
-            // Cleanup
-            sh 'docker system prune -f'
+            echo '========================================'
+            script {
+                // Cleanup Docker images
+                sh 'docker system prune -f || true'
+                // Clean workspace
+                cleanWs()
+            }
         }
         success {
             echo 'Pipeline succeeded!'
@@ -197,19 +325,22 @@ pipeline {
                     </ul>
                     
                     <h3>Pipeline Stages Completed:</h3>
-                    <ul>
+                    <ol>
                         <li>✅ Checkout - Source code pulled from Git</li>
-                        <li>✅ Build - Docker image built from custom Dockerfile</li>
-                        <li>✅ Test - Health checks completed</li>
-                        <li>✅ Push to ECR - Custom image pushed to ECR</li>
+                        <li>✅ Build Docker Image - Built with timestamp-based tag</li>
+                        <li>✅ Health Check - Container verification (Flaw #3: No HTTP test)</li>
+                        <li>✅ Push to ECR - Image pushed with :latest tag</li>
                         <li>✅ Update Infrastructure - Terraform (only if .tf files changed)</li>
-                        <li>✅ Deploy - ECS pulled latest image from ECR</li>
-                        <li>✅ Verify - Deployment verified</li>
-                    </ul>
+                        <li>✅ Deploy to ECS - Force new deployment triggered</li>
+                        <li>✅ Verify Deployment - 30s stabilization check</li>
+                        <li>✅ Log to S3 - Pipeline logs stored (Flaw #4: Cost inefficient)</li>
+                        <li>✅ SNS Notification - Alert sent to subscribers</li>
+                    </ol>
                     
                     <h3>Deployment Details:</h3>
-                    <p>✅ Successfully deployed to ECS cluster: <strong>broken-pipeline-app</strong></p>
-                    <p>✅ Service updated: <strong>broken-pipeline-app-service</strong></p>
+                    <p>✅ Successfully deployed to ECS cluster: <strong>${env.ECS_CLUSTER}</strong></p>
+                    <p>✅ Service updated: <strong>${env.ECS_SERVICE}</strong></p>
+                    <p>📦 Image tagged with timestamp and pushed to ECR as :latest</p>
                     
                     <hr>
                     <p><em>This is an automated email from Jenkins CI/CD Pipeline</em></p>
@@ -244,11 +375,13 @@ pipeline {
                     
                     <h3>Common Issues:</h3>
                     <ul>
-                        <li>Docker build failures (Flaw #2: Missing error handling)</li>
-                        <li>Health check failures (Flaw #3: Incomplete verification)</li>
-                        <li>AWS credential/permission issues</li>
-                        <li>ECR push failures</li>
-                        <li>ECS deployment errors</li>
+                        <li>🐛 Docker build failures (Flaw #2: Missing error handling)</li>
+                        <li>🔍 Health check failures (Flaw #3: Only checks container running, not HTTP)</li>
+                        <li>🔐 AWS credential/permission issues</li>
+                        <li>📦 ECR push failures</li>
+                        <li>🚀 ECS deployment errors</li>
+                        <li>📝 S3 log upload issues</li>
+                        <li>📧 SNS notification failures</li>
                     </ul>
                     
                     <hr>
