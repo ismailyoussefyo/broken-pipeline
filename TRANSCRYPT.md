@@ -57,6 +57,3 @@ The following files may contain sensitive information and should be encrypted:
 ## Note
 
 For this challenge project, sensitive values are typically passed via environment variables or AWS Secrets Manager in production. Transcrypt is configured for demonstration purposes.
-
-
-

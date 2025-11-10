@@ -92,10 +92,10 @@ See **JENKINS_PIPELINE_SETUP.md** for:
    ```bash
    # Build the application image
    docker build -t broken-pipeline-app .
-   
+
    # Login to ECR
    aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin <YOUR_ACCOUNT_ID>.dkr.ecr.eu-central-1.amazonaws.com
-   
+
    # Tag and push
    docker tag broken-pipeline-app:latest <YOUR_ACCOUNT_ID>.dkr.ecr.eu-central-1.amazonaws.com/broken-pipeline-app:latest
    docker push <YOUR_ACCOUNT_ID>.dkr.ecr.eu-central-1.amazonaws.com/broken-pipeline-app:latest
@@ -117,4 +117,3 @@ aws elbv2 describe-load-balancers --region eu-central-1 --query 'LoadBalancers[?
 # Check ECS service
 aws ecs describe-services --cluster broken-pipeline-app --services broken-pipeline-app-service --region eu-central-1
 ```
-

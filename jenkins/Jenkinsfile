@@ -1,6 +1,6 @@
 pipeline {
     agent any
-    
+
     environment {
         AWS_REGION = 'eu-central-1'
         AWS_DEFAULT_REGION = 'eu-central-1'
@@ -9,12 +9,12 @@ pipeline {
         ECS_SERVICE = 'broken-pipeline-app-service'
         EMAIL_RECIPIENTS = 'ismailmostafa.y@gmail.com'
     }
-    
+
     options {
         timestamps()
         buildDiscarder(logRotator(numToKeepStr: '10'))
     }
-    
+
     stages {
         stage('Checkout') {
             steps {
@@ -22,7 +22,7 @@ pipeline {
                 checkout scm
             }
         }
-        
+
         stage('Build Docker Image') {
             steps {
                 echo 'Building Docker image from Dockerfile...'
@@ -42,25 +42,25 @@ pipeline {
                             echo "Dockerfile: ./Dockerfile"
                             echo "Build Number: ${BUILD_NUMBER}"
                             echo "=========================================="
-                            
+
                             # Generate timestamp-based image tag
                             IMAGE_TAG=$(date +%Y%m%d%H%M)
                             echo "Image Tag: $IMAGE_TAG"
                             echo $IMAGE_TAG > image_tag.txt
-                            
+
                             # Get AWS account ID and ECR repository URL
                             AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
                             ECR_REPO_NAME="broken-pipeline-app"
                             ECR_REPO_URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO_NAME}"
                             echo $ECR_REPO_URI > ecr_repo.txt
-                            
+
                             # FLAW #2: Build without error checking
                             # If build fails, pipeline continues anyway
                             # Use --no-cache to ensure Dockerfile changes are picked up
                             docker build --no-cache -f Dockerfile -t ${APP_NAME}:$IMAGE_TAG .
                             docker tag ${APP_NAME}:$IMAGE_TAG ${ECR_REPO_URI}:$IMAGE_TAG
                             docker tag ${APP_NAME}:$IMAGE_TAG ${ECR_REPO_URI}:latest
-                            
+
                             echo ""
                             echo "Images built and tagged:"
                             docker images | grep ${APP_NAME} | head -3
@@ -70,7 +70,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Health Check') {
             steps {
                 echo 'Running health check...'
@@ -85,7 +85,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Push to ECR') {
             steps {
                 echo 'Pushing image to ECR...'
@@ -98,19 +98,19 @@ pipeline {
                             echo "=========================================="
                             echo "Pushing Docker image to ECR"
                             echo "=========================================="
-                            
+
                             IMAGE_TAG=$(cat image_tag.txt)
                             ECR_REPO_URI=$(cat ecr_repo.txt)
-                            
+
                             echo "Logging in to ECR..."
                             aws ecr get-login-password --region ${AWS_REGION} | \
                                 docker login --username AWS --password-stdin ${ECR_REPO_URI}
-                            
+
                             echo ""
                             echo "Pushing images..."
                             docker push ${ECR_REPO_URI}:$IMAGE_TAG
                             docker push ${ECR_REPO_URI}:latest
-                            
+
                             echo ""
                             echo "✅ Images pushed successfully!"
                             echo "  - ${ECR_REPO_URI}:$IMAGE_TAG"
@@ -121,7 +121,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Deploy to ECS') {
             steps {
                 echo 'Deploying new image to ECS...'
@@ -134,19 +134,19 @@ pipeline {
                             echo "=========================================="
                             echo "Deploying to ECS"
                             echo "=========================================="
-                            
+
                             IMAGE_TAG=$(cat image_tag.txt)
                             echo "Updating ECS service ${ECS_SERVICE} in cluster ${ECS_CLUSTER}..."
                             echo "Image Tag: $IMAGE_TAG"
                             echo ""
-                            
+
                             # Force new deployment - ECS will pull latest image from ECR
                             aws ecs update-service \
                                 --cluster ${ECS_CLUSTER} \
                                 --service ${ECS_SERVICE} \
                                 --force-new-deployment \
                                 --region ${AWS_REGION}
-                            
+
                             echo ""
                             echo "✅ Deployment triggered successfully!"
                             echo "ECS will:"
@@ -159,7 +159,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Verify Deployment') {
             steps {
                 echo 'Verifying deployment...'
@@ -172,7 +172,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Log to S3') {
             steps {
                 echo 'Uploading pipeline logs to S3...'
@@ -185,21 +185,21 @@ pipeline {
                             echo "=========================================="
                             echo "Uploading logs to S3"
                             echo "=========================================="
-                            
+
                             S3_LOG_BUCKET="broken-pipeline-app-logs-$(aws sts get-caller-identity --query Account --output text)"
                             BUILD_LOG_PATH="pipeline-logs/${JOB_NAME}/${BUILD_TAG}"
-                            
+
                             # FLAW #4 (Cost Issue): Uploading entire Jenkins log directory
                             # This recursively uploads ALL Jenkins logs, not just this build
                             # Impact: Uploads grow exponentially, inflating S3 storage costs
                             # Fix: Upload only current build log: aws s3 cp ${WORKSPACE}/build.log s3://...
-                            
+
                             echo "Uploading Jenkins logs recursively (WARNING: Cost inefficient)..."
                             aws s3 cp /var/jenkins_home/jobs/ s3://${S3_LOG_BUCKET}/${BUILD_LOG_PATH}/ \
                                 --recursive \
                                 --region ${AWS_REGION} \
                                 --only-show-errors || echo "⚠️ Some log files could not be uploaded"
-                            
+
                             echo ""
                             echo "✅ Logs uploaded to S3"
                             echo "Location: s3://${S3_LOG_BUCKET}/${BUILD_LOG_PATH}/"
@@ -209,7 +209,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Notify SNS') {
             steps {
                 echo 'Sending SNS notification...'
@@ -220,31 +220,31 @@ pipeline {
                     ]) {
                         // Get build result as Groovy variable
                         def buildResult = currentBuild.currentResult ?: 'SUCCESS'
-                        
+
                         sh """
                             echo "=========================================="
                             echo "Sending SNS notification"
                             echo "=========================================="
-                            
+
                             SNS_TOPIC_ARN=\$(aws sns list-topics --region ${AWS_REGION} \\
                                 --query "Topics[?contains(TopicArn, 'broken-pipeline-alarms')].TopicArn" \\
                                 --output text)
-                            
+
                             IMAGE_TAG=\$(cat image_tag.txt)
                             RESULT="${buildResult}"
-                            
+
                             MESSAGE="Pipeline ${JOB_NAME} build #${BUILD_NUMBER} completed with status: \${RESULT}
 
 Image Tag: \${IMAGE_TAG}
 Build URL: ${BUILD_URL}
 Deployed to: ${ECS_CLUSTER}/${ECS_SERVICE}"
-                            
+
                             aws sns publish \\
                                 --topic-arn \${SNS_TOPIC_ARN} \\
                                 --message "\${MESSAGE}" \\
                                 --subject "Deployment Result: \${RESULT} - ${JOB_NAME}" \\
                                 --region ${AWS_REGION}
-                            
+
                             echo ""
                             echo "✅ SNS notification sent successfully!"
                             echo "=========================================="
@@ -254,7 +254,7 @@ Deployed to: ${ECS_CLUSTER}/${ECS_SERVICE}"
             }
         }
     }
-    
+
     post {
         always {
             echo '========================================'
@@ -273,7 +273,7 @@ Deployed to: ${ECS_CLUSTER}/${ECS_SERVICE}"
                 subject: "✅ Pipeline SUCCESS: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
                 body: """
                     <h2>Pipeline Execution Successful! 🎉</h2>
-                    
+
                     <h3>Build Information:</h3>
                     <ul>
                         <li><strong>Job Name:</strong> ${env.JOB_NAME}</li>
@@ -281,7 +281,7 @@ Deployed to: ${ECS_CLUSTER}/${ECS_SERVICE}"
                         <li><strong>Build URL:</strong> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></li>
                         <li><strong>Console Output:</strong> <a href="${env.BUILD_URL}console">${env.BUILD_URL}console</a></li>
                     </ul>
-                    
+
                     <h3>Pipeline Stages Completed:</h3>
                     <ol>
                         <li>✅ Checkout - Source code pulled from Git</li>
@@ -293,12 +293,12 @@ Deployed to: ${ECS_CLUSTER}/${ECS_SERVICE}"
                         <li>✅ Log to S3 - Pipeline logs stored (Flaw #4: Cost inefficient)</li>
                         <li>✅ SNS Notification - Alert sent to subscribers</li>
                     </ol>
-                    
+
                     <h3>Deployment Details:</h3>
                     <p>✅ Successfully deployed to ECS cluster: <strong>${env.ECS_CLUSTER}</strong></p>
                     <p>✅ Service updated: <strong>${env.ECS_SERVICE}</strong></p>
                     <p>📦 Image tagged with timestamp and pushed to ECR as :latest</p>
-                    
+
                     <hr>
                     <p><em>This is an automated email from Jenkins CI/CD Pipeline</em></p>
                 """,
@@ -312,7 +312,7 @@ Deployed to: ${ECS_CLUSTER}/${ECS_SERVICE}"
                 subject: "❌ Pipeline FAILURE: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
                 body: """
                     <h2>Pipeline Execution Failed! ⚠️</h2>
-                    
+
                     <h3>Build Information:</h3>
                     <ul>
                         <li><strong>Job Name:</strong> ${env.JOB_NAME}</li>
@@ -320,7 +320,7 @@ Deployed to: ${ECS_CLUSTER}/${ECS_SERVICE}"
                         <li><strong>Build URL:</strong> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></li>
                         <li><strong>Console Output:</strong> <a href="${env.BUILD_URL}console">${env.BUILD_URL}console</a></li>
                     </ul>
-                    
+
                     <h3>Action Required:</h3>
                     <ol>
                         <li>Check the <a href="${env.BUILD_URL}console">console output</a> for error details</li>
@@ -329,7 +329,7 @@ Deployed to: ${ECS_CLUSTER}/${ECS_SERVICE}"
                         <li>Check ECR repository access</li>
                         <li>Verify ECS cluster and service status</li>
                     </ol>
-                    
+
                     <h3>Common Issues:</h3>
                     <ul>
                         <li>🐛 Docker build failures (Flaw #2: Missing error handling)</li>
@@ -340,7 +340,7 @@ Deployed to: ${ECS_CLUSTER}/${ECS_SERVICE}"
                         <li>📝 S3 log upload issues</li>
                         <li>📧 SNS notification failures</li>
                     </ul>
-                    
+
                     <hr>
                     <p><em>This is an automated email from Jenkins CI/CD Pipeline</em></p>
                 """,
@@ -354,7 +354,7 @@ Deployed to: ${ECS_CLUSTER}/${ECS_SERVICE}"
                 subject: "⚠️  Pipeline UNSTABLE: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
                 body: """
                     <h2>Pipeline Execution Unstable ⚠️</h2>
-                    
+
                     <h3>Build Information:</h3>
                     <ul>
                         <li><strong>Job Name:</strong> ${env.JOB_NAME}</li>
@@ -362,10 +362,10 @@ Deployed to: ${ECS_CLUSTER}/${ECS_SERVICE}"
                         <li><strong>Build URL:</strong> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></li>
                         <li><strong>Console Output:</strong> <a href="${env.BUILD_URL}console">${env.BUILD_URL}console</a></li>
                     </ul>
-                    
+
                     <p>The pipeline completed but some tests or checks were unstable.</p>
                     <p>Please review the console output to identify issues.</p>
-                    
+
                     <hr>
                     <p><em>This is an automated email from Jenkins CI/CD Pipeline</em></p>
                 """,
@@ -375,4 +375,3 @@ Deployed to: ${ECS_CLUSTER}/${ECS_SERVICE}"
         }
     }
 }
-

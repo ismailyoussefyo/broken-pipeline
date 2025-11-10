@@ -127,7 +127,7 @@ fi
 
 - **HTTPS only (port 443)**: All inbound traffic restricted to HTTPS
 - **Network ACLs**: Block non-HTTPS inbound traffic at the subnet level
-- **Security Groups**: 
+- **Security Groups**:
   - Application ALB: Allow HTTPS inbound (port 443), open to all
   - Jenkins ALB: Allow HTTPS inbound (port 443), restricted to Portugal IP ranges
   - Outbound: Allow all traffic
@@ -152,4 +152,3 @@ fi
 - VPC peering enables cross-VPC communication
 - ECR repository for custom container images
 - CloudWatch logs for ECS tasks
-

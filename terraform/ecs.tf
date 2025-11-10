@@ -62,4 +62,3 @@ module "jenkins_ecs" {
 
   tags = var.tags
 }
-

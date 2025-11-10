@@ -17,6 +17,3 @@ resource "aws_ecr_repository" "app" {
     Description = "ECR repository for application container images"
   }
 }
-
-
-

@@ -44,4 +44,3 @@ variable "tags" {
     project     = "BrokenPipeline"
   }
 }
-

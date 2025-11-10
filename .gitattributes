@@ -20,6 +20,3 @@ Jenkinsfile linguist-language=Groovy
 
 # Transcrypt - Uncomment and configure if using transcrypt for sensitive files
 # terraform/terraform.tfvars filter=crypt diff=crypt merge=crypt
-
-
-

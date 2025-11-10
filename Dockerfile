@@ -56,4 +56,3 @@ EXPOSE 80
 
 # nginx will start automatically from base image
 CMD ["nginx", "-g", "daemon off;"]
-

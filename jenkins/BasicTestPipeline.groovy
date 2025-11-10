@@ -3,7 +3,7 @@
 
 pipeline {
     agent any
-    
+
     stages {
         stage('✅ Test 1: Jenkins Environment') {
             steps {
@@ -28,7 +28,7 @@ pipeline {
                 '''
             }
         }
-        
+
         stage('✅ Test 2: Credentials Access') {
             steps {
                 echo '======================================'
@@ -52,7 +52,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('✅ Test 3: Network Connectivity') {
             steps {
                 echo '======================================'
@@ -61,7 +61,7 @@ pipeline {
                 sh '''
                     echo "Testing external connectivity..."
                     echo ""
-                    
+
                     echo "Testing Application ALB:"
                     APP_URL="http://broken-pipeline-app-alb-1038911148.eu-central-1.elb.amazonaws.com"
                     if curl -s -o /dev/null -w "%{http_code}" "$APP_URL" | grep -q "200"; then
@@ -70,7 +70,7 @@ pipeline {
                     else
                         echo "  ⚠️  Application returned non-200"
                     fi
-                    
+
                     echo ""
                     echo "Testing AWS API endpoint:"
                     HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://sts.eu-central-1.amazonaws.com")
@@ -82,7 +82,7 @@ pipeline {
                 '''
             }
         }
-        
+
         stage('✅ Test 4: File Operations') {
             steps {
                 echo '======================================'
@@ -90,25 +90,25 @@ pipeline {
                 echo '======================================'
                 sh '''
                     echo "Testing file system operations..."
-                    
+
                     # Create a test file
                     echo "Hello from Jenkins Pipeline!" > test-file.txt
                     echo "  ✅ Created test file"
-                    
+
                     # Read the file
                     cat test-file.txt
                     echo "  ✅ Read test file"
-                    
+
                     # Delete the file
                     rm test-file.txt
                     echo "  ✅ Deleted test file"
-                    
+
                     echo ""
                     echo "All file operations work!"
                 '''
             }
         }
-        
+
         stage('✅ Test 5: Multi-Step Execution') {
             steps {
                 echo '======================================'
@@ -125,7 +125,7 @@ pipeline {
                 echo "Multi-step execution works!"
             }
         }
-        
+
         stage('🎉 Summary') {
             steps {
                 echo '========================================='
@@ -150,7 +150,7 @@ pipeline {
             }
         }
     }
-    
+
     post {
         success {
             echo ''
@@ -169,4 +169,3 @@ pipeline {
         }
     }
 }
-

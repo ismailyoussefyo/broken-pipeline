@@ -130,10 +130,10 @@ See `TRANSCRYPT.md` for detailed instructions.
    ```bash
    # Run all pre-commit hooks
    pre-commit run --all-files
-   
+
    # Run specific hook
    pre-commit run terraform_fmt --all-files
-   
+
    # Check for secrets
    detect-secrets scan
    ```
@@ -164,6 +164,3 @@ See `TRANSCRYPT.md` for detailed instructions.
 ### Checkov failures
 - Review security findings
 - Add skip comments for acceptable risks: `# checkov:skip=CKV_AWS_23:reason`
-
-
-

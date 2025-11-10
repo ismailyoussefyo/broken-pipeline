@@ -112,4 +112,3 @@ This infrastructure contains exactly three subtle flaws:
    - Only checks if container is running, not if HTTP endpoint responds
 
 All flaws are clearly documented with comments explaining the issue, impact, and fix.
-

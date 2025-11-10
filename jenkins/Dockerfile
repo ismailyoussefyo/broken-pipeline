@@ -48,4 +48,3 @@ USER jenkins
 EXPOSE 8080
 
 # The entrypoint is inherited from the base image
-

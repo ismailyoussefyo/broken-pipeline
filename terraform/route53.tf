@@ -37,4 +37,3 @@ locals {
   certificate_arn = var.domain_name != "" ? aws_acm_certificate.main[0].arn : ""
   route53_zone_id = var.domain_name != "" ? aws_route53_zone.main[0].zone_id : ""
 }
-

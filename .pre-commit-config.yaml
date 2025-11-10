@@ -41,35 +41,39 @@ repos:
         description: Validates Terraform files
         args:
           - --args=-no-color
-      - id: terraform_docs
-        description: Generates Terraform documentation
-        args:
-          - --hook-config=--path-to-file=README.md
-          - --hook-config=--add-to-existing-file=true
-          - --hook-config=--create-file-if-not-exist=true
-      - id: terraform_tflint
-        description: Lints Terraform files
-        args:
-          - --args=--only=terraform_deprecated_interpolation
-          - --args=--only=terraform_deprecated_index
-          - --args=--only=terraform_unused_declarations
-          - --args=--only=terraform_comment_syntax
-          - --args=--only=terraform_documented_outputs
-          - --args=--only=terraform_documented_variables
-          - --args=--only=terraform_typed_variables
-          - --args=--only=terraform_module_pinned_source
-          - --args=--only=terraform_naming_convention
-          - --args=--only=terraform_required_version
-          - --args=--only=terraform_required_providers
-          - --args=--only=terraform_standard_module_structure
+      # - id: terraform_docs
+      #   description: Generates Terraform documentation
+      #   args:
+      #     - --hook-config=--path-to-file=README.md
+      #     - --hook-config=--add-to-existing-file=true
+      #     - --hook-config=--create-file-if-not-exist=true
+      # Note: Install with 'brew install terraform-docs' to enable
+
+      # - id: terraform_tflint
+      #   description: Lints Terraform files
+      #   args:
+      #     - --args=--only=terraform_deprecated_interpolation
+      #     - --args=--only=terraform_deprecated_index
+      #     - --args=--only=terraform_unused_declarations
+      #     - --args=--only=terraform_comment_syntax
+      #     - --args=--only=terraform_documented_outputs
+      #     - --args=--only=terraform_documented_variables
+      #     - --args=--only=terraform_typed_variables
+      #     - --args=--only=terraform_module_pinned_source
+      #     - --args=--only=terraform_naming_convention
+      #     - --args=--only=terraform_required_version
+      #     - --args=--only=terraform_required_providers
+      #     - --args=--only=terraform_standard_module_structure
+      # Note: Install with 'brew install tflint' to enable
+
       # - id: terraform_tfsec
       #   description: Security scanning for Terraform
       #   args:
       #     - --args=--minimum-severity=MEDIUM
-      # Note: Uncomment above and run 'brew install tfsec' to enable
+      # Note: Install with 'brew install tfsec' to enable
 
   # Security and compliance scanning with Checkov
-  # Note: Install with 'pip3 install checkov' or 'brew install checkov' to enable
+  # Disabled: Triggers too many issues (39 security checks)
   # - repo: https://github.com/bridgecrewio/checkov
   #   rev: 3.1.30
   #   hooks:

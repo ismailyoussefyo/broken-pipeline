@@ -143,7 +143,7 @@ resource "aws_lb_listener" "http" {
 
   default_action {
     type = var.certificate_arn != "" ? "redirect" : "forward"
-    
+
     dynamic "redirect" {
       for_each = var.certificate_arn != "" ? [1] : []
       content {
@@ -214,7 +214,7 @@ resource "aws_launch_template" "ecs" {
   name_prefix   = "${var.cluster_name}-"
   image_id      = data.aws_ami.ecs_optimized.id
   instance_type = "t3.micro"
-  
+
   iam_instance_profile {
     name = var.instance_profile_name
   }
@@ -224,7 +224,7 @@ resource "aws_launch_template" "ecs" {
   user_data = base64encode(<<-EOF
     #!/bin/bash
     echo ECS_CLUSTER=${aws_ecs_cluster.main.name} >> /etc/ecs/ecs.config
-    
+
     # Fix Docker socket permissions for Jenkins containers
     chmod 666 /var/run/docker.sock
   EOF
@@ -429,4 +429,3 @@ resource "aws_route53_health_check" "main" {
 }
 
 data "aws_region" "current" {}
-

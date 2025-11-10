@@ -32,4 +32,3 @@ output "route53_zone_id" {
   description = "Route53 hosted zone ID"
   value       = length(aws_route53_zone.main) > 0 ? aws_route53_zone.main[0].zone_id : ""
 }
-

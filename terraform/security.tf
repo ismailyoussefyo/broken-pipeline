@@ -52,6 +52,3 @@ resource "aws_wafv2_web_acl_association" "jenkins_alb" {
   resource_arn = module.jenkins_ecs.alb_arn
   web_acl_arn  = aws_wafv2_web_acl.jenkins_geo_restriction.arn
 }
-
-
-

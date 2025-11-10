@@ -64,7 +64,7 @@ resource "aws_cloudwatch_metric_alarm" "app_health_check" {
   dimensions = {
     HealthCheckId = module.app_ecs.health_check_id != "" ? module.app_ecs.health_check_id : "dummy"
   }
-  
+
   count = module.app_ecs.health_check_id != "" ? 1 : 0
 
   tags = {
@@ -89,7 +89,7 @@ resource "aws_cloudwatch_metric_alarm" "jenkins_health_check" {
   dimensions = {
     HealthCheckId = module.jenkins_ecs.health_check_id != "" ? module.jenkins_ecs.health_check_id : "dummy"
   }
-  
+
   count = module.jenkins_ecs.health_check_id != "" ? 1 : 0
 
   tags = {
@@ -121,4 +121,3 @@ resource "aws_cloudwatch_metric_alarm" "daily_cost" {
     Name = "${var.project_name}-daily-cost-alarm"
   }
 }
-

@@ -318,4 +318,3 @@ resource "aws_network_acl" "jenkins_private" {
     Name = "${var.project_name}-jenkins-private-nacl"
   }
 }
-

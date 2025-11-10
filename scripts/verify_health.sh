@@ -47,12 +47,12 @@ fi
 # Check if container is running
 if docker ps | grep -q "$CONTAINER_ID"; then
     echo "Container is running"
-    
+
     # FLAW #3: The script checks if container is running but doesn't actually
     # verify the HTTP health endpoint returns 200 OK
     # A container can be running but still failing to serve requests correctly
     # The HEALTH_CHECK_URL parameter is accepted but never used
-    
+
     # This would be the correct check:
     # HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_CHECK_URL")
     # if [ "$HTTP_CODE" -eq 200 ]; then
@@ -61,7 +61,7 @@ if docker ps | grep -q "$CONTAINER_ID"; then
     #     echo "Health check failed: HTTP $HTTP_CODE"
     #     exit 1
     # fi
-    
+
     echo "Health check passed (container is running)"
 fi
 

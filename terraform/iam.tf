@@ -165,6 +165,3 @@ resource "aws_iam_instance_profile" "ec2_instance" {
     Name = "${var.project_name}-ec2-instance-profile"
   }
 }
-
-
-
