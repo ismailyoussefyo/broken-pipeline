@@ -18,7 +18,7 @@ pipeline {
         
         stage('Build') {
             steps {
-                echo 'Building Docker image...'
+                echo 'Building Docker image from Dockerfile...'
                 script {
                     // FLAW #2: Missing error handling - if docker build fails, pipeline continues
                     // The Build stage executes Docker commands without checking return codes
@@ -26,9 +26,28 @@ pipeline {
                     // Impact: Pipeline may report success even when builds fail, leading to deployment of broken images
                     // Fix: Add error checking: docker build ... || exit 1
                     sh '''
-                        docker build -t ${APP_NAME}:${BUILD_NUMBER} .
+                        echo "=========================================="
+                        echo "Building custom Docker image"
+                        echo "Dockerfile: ./Dockerfile"
+                        echo "Base Image: tutum/hello-world:latest"
+                        echo "Build Number: ${BUILD_NUMBER}"
+                        echo "=========================================="
+                        
+                        # Build custom image from Dockerfile
+                        docker build -f Dockerfile -t ${APP_NAME}:${BUILD_NUMBER} .
+                        
+                        echo ""
+                        echo "Image built successfully!"
+                        echo "Tagging images for ECR..."
+                        
+                        # Tag for ECR with build number and latest
                         docker tag ${APP_NAME}:${BUILD_NUMBER} ${ECR_REPO}:${BUILD_NUMBER}
                         docker tag ${APP_NAME}:${BUILD_NUMBER} ${ECR_REPO}:latest
+                        
+                        echo ""
+                        echo "Images tagged:"
+                        docker images | grep ${APP_NAME} | head -3
+                        echo "=========================================="
                     '''
                 }
             }
