@@ -60,15 +60,6 @@ module "jenkins_ecs" {
   task_role_arn        = aws_iam_role.ecs_task.arn
   instance_profile_name = aws_iam_instance_profile.ec2_instance.name
 
-  # EFS configuration for persistent Jenkins storage
-  efs_volume_config = {
-    enabled          = true
-    file_system_id   = aws_efs_file_system.jenkins.id
-    access_point_id  = aws_efs_access_point.jenkins.id
-    container_path   = "/var/jenkins_home"
-    root_directory   = "/"
-  }
-
   tags = var.tags
 }
 

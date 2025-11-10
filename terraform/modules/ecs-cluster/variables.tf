@@ -119,17 +119,3 @@ variable "tags" {
   default     = {}
 }
 
-variable "efs_volume_config" {
-  description = "EFS volume configuration for persistent storage"
-  type = object({
-    enabled              = bool
-    file_system_id       = optional(string)
-    access_point_id      = optional(string)
-    container_path       = optional(string, "/var/jenkins_home")
-    root_directory       = optional(string, "/")
-  })
-  default = {
-    enabled = false
-  }
-}
-
