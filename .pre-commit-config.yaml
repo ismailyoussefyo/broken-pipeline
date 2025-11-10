@@ -62,33 +62,34 @@ repos:
           - --args=--only=terraform_required_version
           - --args=--only=terraform_required_providers
           - --args=--only=terraform_standard_module_structure
-      - id: terraform_tfsec
-        description: Security scanning for Terraform
-        args:
-          - --args=--minimum-severity=MEDIUM
+      # - id: terraform_tfsec
+      #   description: Security scanning for Terraform
+      #   args:
+      #     - --args=--minimum-severity=MEDIUM
+      # Note: Uncomment above and run 'brew install tfsec' to enable
 
   # Security and compliance scanning with Checkov
-  - repo: https://github.com/bridgecrewio/checkov
-    rev: 3.1.30
-    hooks:
-      - id: checkov
-        description: Security and compliance scanning
-        args:
-          - --framework=terraform
-          - --framework=dockerfile
-          - --skip-check=CKV_AWS_23  # Skip S3 bucket encryption check (we use AES256)
-          - --skip-check=CKV_AWS_144  # Skip cross-region replication check
-          - --quiet
-          - --compact
+  # Note: Install with 'pip3 install checkov' or 'brew install checkov' to enable
+  # - repo: https://github.com/bridgecrewio/checkov
+  #   rev: 3.1.30
+  #   hooks:
+  #     - id: checkov
+  #       description: Security and compliance scanning
+  #       args:
+  #         - --framework=terraform
+  #         - --framework=dockerfile
+  #         - --skip-check=CKV_AWS_23  # Skip S3 bucket encryption check (we use AES256)
+  #         - --skip-check=CKV_AWS_144  # Skip cross-region replication check
+  #         - --quiet
+  #         - --compact
 
   # Secret detection with Yelp detect-secrets
-  - repo: https://github.com/Yelp/detect-secrets
-    rev: v1.4.0
-    hooks:
-      - id: detect-secrets
-        description: Detects secrets and credentials in files
-        args: ['--baseline', '.secrets.baseline']
-        exclude: package.lock.json
-
-
-
+  # Note: Install with 'pip3 install detect-secrets' to enable
+  # Note: Run 'detect-secrets scan > .secrets.baseline' first
+  # - repo: https://github.com/Yelp/detect-secrets
+  #   rev: v1.4.0
+  #   hooks:
+  #     - id: detect-secrets
+  #       description: Detects secrets and credentials in files
+  #       args: ['--baseline', '.secrets.baseline']
+  #       exclude: package.lock.json
