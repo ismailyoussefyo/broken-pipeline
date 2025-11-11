@@ -33,11 +33,7 @@ resource "aws_security_group" "ecs_tasks" {
   description = "Security group for ${var.cluster_name} ECS tasks"
   vpc_id      = var.vpc_id
 
-  # FLAW #1: Security group allows traffic from ALB but uses wrong port range
-  # The ingress rule should only allow the container_port (e.g., 80), but it allows a wider range (80-180)
-  # This creates an unnecessarily permissive security group rule that could allow access to additional ports
-  # Impact: Security concern - allows potential access to ports beyond the intended container port
-  # Fix: Change to_port = var.container_port + 100 to to_port = var.container_port
+
   ingress {
     description     = "Allow traffic from ALB"
     from_port       = var.container_port
