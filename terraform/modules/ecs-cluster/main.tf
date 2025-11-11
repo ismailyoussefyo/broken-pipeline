@@ -4,23 +4,11 @@ resource "aws_security_group" "alb" {
   description = "Security group for ${var.cluster_name} ALB"
   vpc_id      = var.vpc_id
 
-  # Allow HTTPS if certificate is provided
-  dynamic "ingress" {
-    for_each = var.certificate_arn != "" ? [1] : []
-    content {
-      description = "HTTPS from allowed CIDR blocks"
-      from_port   = 443
-      to_port     = 443
-      protocol    = "tcp"
-      cidr_blocks = var.allowed_cidr_blocks
-    }
-  }
-
-  # Always allow HTTP (for testing without certificate or as fallback)
+  # Only allow HTTPS traffic
   ingress {
-    description = "HTTP from allowed CIDR blocks"
-    from_port   = 80
-    to_port     = 80
+    description = "HTTPS from allowed CIDR blocks"
+    from_port   = 443
+    to_port     = 443
     protocol    = "tcp"
     cidr_blocks = var.allowed_cidr_blocks
   }
@@ -120,9 +108,8 @@ resource "aws_lb_target_group" "main" {
   })
 }
 
-# HTTPS Listener (only created if certificate_arn is provided)
+# HTTPS Listener - only allow HTTPS traffic
 resource "aws_lb_listener" "https" {
-  count             = var.certificate_arn != "" ? 1 : 0
   load_balancer_arn = aws_lb.main.arn
   port              = "443"
   protocol          = "HTTPS"
@@ -132,28 +119,6 @@ resource "aws_lb_listener" "https" {
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.main.arn
-  }
-}
-
-# HTTP Listener (created if no certificate, or as redirect if certificate exists)
-resource "aws_lb_listener" "http" {
-  load_balancer_arn = aws_lb.main.arn
-  port              = "80"
-  protocol          = "HTTP"
-
-  default_action {
-    type = var.certificate_arn != "" ? "redirect" : "forward"
-
-    dynamic "redirect" {
-      for_each = var.certificate_arn != "" ? [1] : []
-      content {
-        port        = "443"
-        protocol    = "HTTPS"
-        status_code = "HTTP_301"
-      }
-    }
-
-    target_group_arn = var.certificate_arn == "" ? aws_lb_target_group.main.arn : null
   }
 }
 
@@ -421,6 +386,9 @@ resource "aws_ecs_service" "main" {
     container_port   = var.container_port
   }
 
+  # Health check grace period - wait for containers to start before checking health
+  health_check_grace_period_seconds = 300
+
   depends_on = [
     aws_autoscaling_group.ecs
   ]
@@ -448,8 +416,8 @@ resource "aws_route53_record" "main" {
 resource "aws_route53_health_check" "main" {
   count             = var.route53_record_name != "" ? 1 : 0
   fqdn              = var.route53_record_name
-  port              = var.certificate_arn != "" ? 443 : 80
-  type              = var.certificate_arn != "" ? "HTTPS" : "HTTP"
+  port              = 443
+  type              = "HTTPS"
   resource_path     = var.health_check_path
   failure_threshold = 3
   request_interval  = 30

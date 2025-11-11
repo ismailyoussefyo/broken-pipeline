@@ -70,9 +70,13 @@ variable "allowed_cidr_blocks" {
 }
 
 variable "certificate_arn" {
-  description = "ARN of the SSL certificate for HTTPS (optional - leave empty for HTTP only)"
+  description = "ARN of the SSL certificate for HTTPS (required - ALB only accepts HTTPS traffic)"
   type        = string
-  default     = ""
+
+  validation {
+    condition     = var.certificate_arn != ""
+    error_message = "certificate_arn is required. ALB only accepts HTTPS traffic and requires a valid SSL certificate ARN."
+  }
 }
 
 variable "s3_logging_bucket" {
