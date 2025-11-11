@@ -72,36 +72,6 @@ Your pipeline will:
 - Check Console Output in Jenkins
 - Verify AWS credentials have correct permissions
 
----
-
-## What's Next?
-
-See **JENKINS_PIPELINE_SETUP.md** for:
-- Full Docker pipeline setup
-- Advanced configurations
-- Testing the intentional flaws
-- Setting up webhooks for auto-triggers
-
-**Current Limitations:**
-- The SimplifiedPipeline doesn't build Docker images (Jenkins container lacks Docker)
-- For full CI/CD with builds, you need Docker-in-Docker or a separate build agent
-- The pipeline triggers deployments but uses pre-existing images in ECR
-
-**To Build Images:**
-1. Build locally and push to ECR:
-   ```bash
-   # Build the application image
-   docker build -t broken-pipeline-app .
-
-   # Login to ECR
-   aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin <YOUR_ACCOUNT_ID>.dkr.ecr.eu-central-1.amazonaws.com
-
-   # Tag and push
-   docker tag broken-pipeline-app:latest <YOUR_ACCOUNT_ID>.dkr.ecr.eu-central-1.amazonaws.com/broken-pipeline-app:latest
-   docker push <YOUR_ACCOUNT_ID>.dkr.ecr.eu-central-1.amazonaws.com/broken-pipeline-app:latest
-   ```
-
-2. Then run the Jenkins pipeline to deploy
 
 ---
 
