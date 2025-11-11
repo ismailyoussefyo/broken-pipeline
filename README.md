@@ -34,55 +34,6 @@ This project implements a deliberately flawed cloud deployment pipeline on AWS (
 └── README.md
 ```
 
-## Deliberate Flaws
-
-This infrastructure contains **exactly three subtle flaws** that do not impair core functionality:
-
-### Flaw #1: Terraform - Security Group Port Range (terraform/modules/ecs-cluster/main.tf)
-
-**Location**: `terraform/modules/ecs-cluster/main.tf` lines 34-43
-
-**Description**: The ECS tasks security group ingress rule allows a wider port range than necessary. Instead of only allowing traffic on `container_port`, it allows traffic from `container_port` to `container_port + 100`. This creates an unnecessarily permissive security group rule that could allow access to additional ports if containers are misconfigured.
-
-**Impact**: Security concern - allows potential access to ports beyond the intended container port, but doesn't break functionality since the ALB only forwards to the correct port.
-
-**Fix**: Change `to_port = var.container_port + 100` to `to_port = var.container_port`
-
-### Flaw #2: Jenkins Pipeline - Missing Error Handling (jenkins/Jenkinsfile)
-
-**Location**: `jenkins/Jenkinsfile` lines 15-22
-
-**Description**: The Build stage executes Docker commands without checking return codes. If `docker build` fails, the pipeline continues to the next stage without failing, potentially pushing a broken image or deploying a failed build.
-
-**Impact**: Pipeline may report success even when builds fail, leading to deployment of broken images.
-
-**Fix**: Add error checking after docker commands:
-```groovy
-sh '''
-    docker build -t ${APP_NAME}:${BUILD_NUMBER} . || exit 1
-    docker tag ${APP_NAME}:${BUILD_NUMBER} ${ECR_REPO}:${BUILD_NUMBER} || exit 1
-    docker tag ${APP_NAME}:${BUILD_NUMBER} ${ECR_REPO}:latest || exit 1
-'''
-```
-
-### Flaw #3: Health Check Script - Incomplete Health Verification (scripts/verify_health.sh)
-
-**Location**: `scripts/verify_health.sh` lines 37-49
-
-**Description**: The health check script only verifies that the container is running (process check) but never actually tests the HTTP health endpoint. The script accepts `HEALTH_CHECK_URL` as a parameter but never uses it to make an HTTP request. A container can be running but still failing to serve requests correctly.
-
-**Impact**: Health checks may pass even when the application is not responding correctly to HTTP requests, leading to false positives in deployment verification.
-
-**Fix**: Add actual HTTP endpoint check:
-```bash
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_CHECK_URL")
-if [ "$HTTP_CODE" -eq 200 ]; then
-    echo "Health check passed: HTTP $HTTP_CODE"
-else
-    echo "Health check failed: HTTP $HTTP_CODE"
-    exit 1
-fi
-```
 
 ## Prerequisites
 
