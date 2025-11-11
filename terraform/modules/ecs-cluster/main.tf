@@ -404,6 +404,11 @@ resource "aws_ecs_service" "main" {
   desired_count   = var.container_count
   launch_type     = "EC2"
 
+  # Deployment configuration to handle ENI resource constraints
+  # Allow stopping old tasks before new ones start (blue-green deployment)
+  deployment_minimum_healthy_percent = 50  # Can drop to 50% during deployment
+  deployment_maximum_percent         = 100 # Never exceed desired count
+
   network_configuration {
     subnets          = var.private_subnet_ids
     security_groups  = [aws_security_group.ecs_tasks.id]
