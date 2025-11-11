@@ -17,9 +17,11 @@ resource "aws_route53_zone" "main" {
 # ACM Certificate for HTTPS (optional - only created if domain_name is provided)
 # SSL/TLS certificate for ALB HTTPS listeners
 # Note: Requires DNS validation via Route53
+# Includes wildcard for subdomains (*.domain.com)
 resource "aws_acm_certificate" "main" {
   count             = var.domain_name != "" ? 1 : 0
   domain_name       = var.domain_name
+  subject_alternative_names = ["*.${var.domain_name}"]
   validation_method = "DNS"
 
   lifecycle {
@@ -28,7 +30,7 @@ resource "aws_acm_certificate" "main" {
 
   tags = {
     Name        = "${var.project_name}-certificate"
-    Description = "ACM certificate for ALB HTTPS"
+    Description = "ACM certificate for ALB HTTPS with wildcard for subdomains"
   }
 }
 
