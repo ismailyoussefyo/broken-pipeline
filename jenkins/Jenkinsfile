@@ -43,8 +43,18 @@ pipeline {
                             echo "Build Number: ${BUILD_NUMBER}"
                             echo "=========================================="
 
-                            # Generate timestamp-based image tag
-                            IMAGE_TAG=$(date +%Y%m%d%H%M)
+                            # Read version from VERSION file
+                            if [ -f VERSION ]; then
+                                APP_VERSION=$(cat VERSION | tr -d '[:space:]')
+                                echo "Application Version: $APP_VERSION"
+                            else
+                                echo "⚠️  WARNING: VERSION file not found! Using default 0.0.0"
+                                APP_VERSION="0.0.0"
+                            fi
+
+                            # Generate timestamp-based image tag with version
+                            TIMESTAMP=$(date +%Y%m%d%H%M)
+                            IMAGE_TAG="v${APP_VERSION}-${TIMESTAMP}"
                             echo "Image Tag: $IMAGE_TAG"
                             echo $IMAGE_TAG > image_tag.txt
 
@@ -57,12 +67,18 @@ pipeline {
                             # FLAW #2: Build without error checking
                             # If build fails, pipeline continues anyway
                             # Use --no-cache to ensure Dockerfile changes are picked up
+                            echo ""
+                            echo "Building with version tag: $IMAGE_TAG"
                             docker build --no-cache -f Dockerfile -t ${APP_NAME}:$IMAGE_TAG .
                             docker tag ${APP_NAME}:$IMAGE_TAG ${ECR_REPO_URI}:$IMAGE_TAG
+                            docker tag ${APP_NAME}:$IMAGE_TAG ${ECR_REPO_URI}:v${APP_VERSION}
                             docker tag ${APP_NAME}:$IMAGE_TAG ${ECR_REPO_URI}:latest
 
                             echo ""
                             echo "Images built and tagged:"
+                            echo "  1. ${ECR_REPO_URI}:$IMAGE_TAG (versioned + timestamp)"
+                            echo "  2. ${ECR_REPO_URI}:v${APP_VERSION} (version only)"
+                            echo "  3. ${ECR_REPO_URI}:latest"
                             docker images | grep ${APP_NAME} | head -3
                             echo "=========================================="
                     '''
@@ -102,6 +118,9 @@ pipeline {
                             IMAGE_TAG=$(cat image_tag.txt)
                             ECR_REPO_URI=$(cat ecr_repo.txt)
 
+                            # Extract version from tag (e.g., v1.0.0-202511111830 -> 1.0.0)
+                            APP_VERSION=$(echo $IMAGE_TAG | cut -d'-' -f1 | sed 's/^v//')
+
                             echo "Logging in to ECR..."
                             aws ecr get-login-password --region ${AWS_REGION} | \
                                 docker login --username AWS --password-stdin ${ECR_REPO_URI}
@@ -109,11 +128,13 @@ pipeline {
                             echo ""
                             echo "Pushing images..."
                             docker push ${ECR_REPO_URI}:$IMAGE_TAG
+                            docker push ${ECR_REPO_URI}:v${APP_VERSION}
                             docker push ${ECR_REPO_URI}:latest
 
                             echo ""
                             echo "✅ Images pushed successfully!"
-                            echo "  - ${ECR_REPO_URI}:$IMAGE_TAG"
+                            echo "  - ${ECR_REPO_URI}:$IMAGE_TAG (full version)"
+                            echo "  - ${ECR_REPO_URI}:v${APP_VERSION} (version only)"
                             echo "  - ${ECR_REPO_URI}:latest"
                             echo "=========================================="
                         '''

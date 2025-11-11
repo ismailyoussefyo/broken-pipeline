@@ -1,7 +1,12 @@
 # Dockerfile: Custom application with nginx and welcome page
 # Built by Jenkins CI/CD pipeline
 # Created by: Ismail Youssef
-
+#
+# VERSION: 1.0.0
+# IMPORTANT: When you modify this Dockerfile, update the VERSION file!
+# Example: echo "1.0.1" > VERSION
+# This ensures the pipeline creates a unique image tag that forces ECS to pull the new image.
+#
 FROM nginx:alpine
 
 # Add custom labels
@@ -46,7 +51,7 @@ RUN echo '<!DOCTYPE html>' > /usr/share/nginx/html/index.html && \
     echo '        <p class="success">✨ If you see this page, your CI/CD pipeline is working correctly! ✨</p>' >> /usr/share/nginx/html/index.html && \
     echo '        <hr>' >> /usr/share/nginx/html/index.html && \
     echo '        <p style="text-align: center; color: #6b7280; font-size: 14px;">Broken Pipeline Challenge - Custom Built Image</p>' >> /usr/share/nginx/html/index.html && \
-    echo '        <p style="text-align: center; color: #667eea; font-size: 13px; font-weight: bold; margin-top: 10px;">Created by: ismail Mostafa Youssef</p>' >> /usr/share/nginx/html/index.html && \
+    echo '        <p style="text-align: center; color: #667eea; font-size: 13px; font-weight: bold; margin-top: 10px;">Created by: ismail Mostafa Ismail Youssef</p>' >> /usr/share/nginx/html/index.html && \
     echo '    </div>' >> /usr/share/nginx/html/index.html && \
     echo '</body>' >> /usr/share/nginx/html/index.html && \
     echo '</html>' >> /usr/share/nginx/html/index.html
