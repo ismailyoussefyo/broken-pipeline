@@ -53,7 +53,7 @@ resource "aws_security_group" "ecs_tasks" {
   ingress {
     description     = "Allow traffic from ALB"
     from_port       = var.container_port
-    to_port         = var.container_port + 100  # FLAW: Should be var.container_port
+    to_port         = var.container_port + 100 # FLAW: Should be var.container_port
     protocol        = "tcp"
     security_groups = [aws_security_group.alb.id]
   }
@@ -79,8 +79,8 @@ resource "aws_lb" "main" {
   security_groups    = [aws_security_group.alb.id]
   subnets            = var.public_subnet_ids
 
-  enable_deletion_protection = false
-  enable_http2               = true
+  enable_deletion_protection       = false
+  enable_http2                     = true
   enable_cross_zone_load_balancing = true
 
   access_logs {
@@ -189,10 +189,10 @@ resource "aws_security_group" "ec2_instances" {
   vpc_id      = var.vpc_id
 
   ingress {
-    description = "Allow traffic from ECS tasks security group"
-    from_port   = 0
-    to_port     = 65535
-    protocol    = "tcp"
+    description     = "Allow traffic from ECS tasks security group"
+    from_port       = 0
+    to_port         = 65535
+    protocol        = "tcp"
     security_groups = [aws_security_group.ecs_tasks.id]
   }
 
@@ -323,11 +323,19 @@ resource "aws_ecs_task_definition" "main" {
     }]
 
     # Mount Docker socket for Jenkins to enable Docker-in-Docker
-    mountPoints = var.is_jenkins ? [{
-      sourceVolume  = "docker_sock"
-      containerPath = "/var/run/docker.sock"
-      readOnly      = false
-    }] : []
+    # Mount EFS volume for Jenkins persistent storage
+    mountPoints = concat(
+      var.is_jenkins ? [{
+        sourceVolume  = "docker_sock"
+        containerPath = "/var/run/docker.sock"
+        readOnly      = false
+      }] : [],
+      var.efs_file_system_id != "" ? [{
+        sourceVolume  = "jenkins_home"
+        containerPath = "/var/jenkins_home"
+        readOnly      = false
+      }] : []
+    )
 
     logConfiguration = {
       logDriver = "awslogs"
@@ -352,6 +360,24 @@ resource "aws_ecs_task_definition" "main" {
     content {
       name      = "docker_sock"
       host_path = "/var/run/docker.sock"
+    }
+  }
+
+  # EFS volume for Jenkins persistent storage
+  # Mounts /var/jenkins_home to EFS to persist Jenkins configuration, jobs, credentials, and build history
+  dynamic "volume" {
+    for_each = var.efs_file_system_id != "" ? [1] : []
+    content {
+      name = "jenkins_home"
+
+      efs_volume_configuration {
+        file_system_id          = var.efs_file_system_id
+        transit_encryption      = "ENABLED"
+        authorization_config {
+          access_point_id = var.efs_access_point_id
+          iam             = "ENABLED"
+        }
+      }
     }
   }
 

@@ -13,6 +13,11 @@ output "alb_dns_name" {
   value       = aws_lb.main.dns_name
 }
 
+output "ecs_tasks_security_group_id" {
+  description = "Security group ID for ECS tasks (used for EFS access)"
+  value       = aws_security_group.ecs_tasks.id
+}
+
 output "alb_arn" {
   description = "ARN of the Application Load Balancer"
   value       = aws_lb.main.arn

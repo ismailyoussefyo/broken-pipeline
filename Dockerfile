@@ -46,7 +46,7 @@ RUN echo '<!DOCTYPE html>' > /usr/share/nginx/html/index.html && \
     echo '        <p class="success">✨ If you see this page, your CI/CD pipeline is working correctly! ✨</p>' >> /usr/share/nginx/html/index.html && \
     echo '        <hr>' >> /usr/share/nginx/html/index.html && \
     echo '        <p style="text-align: center; color: #6b7280; font-size: 14px;">Broken Pipeline Challenge - Custom Built Image</p>' >> /usr/share/nginx/html/index.html && \
-    echo '        <p style="text-align: center; color: #667eea; font-size: 13px; font-weight: bold; margin-top: 10px;">Created by: ismail Youssef</p>' >> /usr/share/nginx/html/index.html && \
+    echo '        <p style="text-align: center; color: #667eea; font-size: 13px; font-weight: bold; margin-top: 10px;">Created by: ismail Mostafa Youssef</p>' >> /usr/share/nginx/html/index.html && \
     echo '    </div>' >> /usr/share/nginx/html/index.html && \
     echo '</body>' >> /usr/share/nginx/html/index.html && \
     echo '</html>' >> /usr/share/nginx/html/index.html

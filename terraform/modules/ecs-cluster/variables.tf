@@ -118,3 +118,15 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "efs_file_system_id" {
+  description = "EFS file system ID for persistent storage (optional - Jenkins only)"
+  type        = string
+  default     = ""
+}
+
+variable "efs_access_point_id" {
+  description = "EFS access point ID for persistent storage (optional - Jenkins only)"
+  type        = string
+  default     = ""
+}

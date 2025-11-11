@@ -16,7 +16,7 @@ module "app_vpc" {
 
   enable_nat_gateway = true
   enable_vpn_gateway = false
-  single_nat_gateway = true  # Cost optimization: single NAT gateway
+  single_nat_gateway = true # Cost optimization: single NAT gateway
 
   enable_dns_hostnames = true
   enable_dns_support   = true
@@ -41,7 +41,7 @@ module "jenkins_vpc" {
 
   enable_nat_gateway = true
   enable_vpn_gateway = false
-  single_nat_gateway = true  # Cost optimization: single NAT gateway
+  single_nat_gateway = true # Cost optimization: single NAT gateway
 
   enable_dns_hostnames = true
   enable_dns_support   = true

@@ -18,8 +18,8 @@ resource "aws_route53_zone" "main" {
 # SSL/TLS certificate for ALB HTTPS listeners
 # Note: Requires DNS validation via Route53
 resource "aws_acm_certificate" "main" {
-  count           = var.domain_name != "" ? 1 : 0
-  domain_name     = var.domain_name
+  count             = var.domain_name != "" ? 1 : 0
+  domain_name       = var.domain_name
   validation_method = "DNS"
 
   lifecycle {

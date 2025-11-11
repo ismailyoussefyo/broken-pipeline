@@ -155,6 +155,26 @@ resource "aws_iam_role_policy" "ec2_instance_s3_logs" {
   })
 }
 
+# IAM Policy for ECS Tasks to access EFS (Jenkins persistent storage)
+# Allows Jenkins container to mount and write to EFS file system
+resource "aws_iam_role_policy" "ecs_task_efs" {
+  name = "${var.project_name}-ecs-task-efs"
+  role = aws_iam_role.ecs_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "elasticfilesystem:ClientMount",
+        "elasticfilesystem:ClientWrite",
+        "elasticfilesystem:ClientRootAccess"
+      ]
+      Resource = "*" # Will be restricted to specific EFS in production
+    }]
+  })
+}
+
 # IAM Instance Profile for EC2 Instances
 # Attaches the IAM role to EC2 instances launched in the ECS cluster
 resource "aws_iam_instance_profile" "ec2_instance" {

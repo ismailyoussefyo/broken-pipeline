@@ -106,7 +106,7 @@ resource "aws_cloudwatch_metric_alarm" "daily_cost" {
   evaluation_periods  = 1
   metric_name         = "EstimatedCharges"
   namespace           = "AWS/Billing"
-  period              = 86400  # 24 hours in seconds
+  period              = 86400 # 24 hours in seconds
   statistic           = "Maximum"
   threshold           = 1.0
   alarm_description   = "This metric monitors estimated daily AWS charges exceeding $1"
